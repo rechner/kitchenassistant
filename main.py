@@ -2,8 +2,14 @@ import wx
 import wx.lib.newevent
 import paho.mqtt.client as paho
 import threading
+import json
+#import subprocess
 
 import printing
+
+import gi
+gi.require_version('Notify', '0.7')
+from gi.repository import Notify
 
 MqttMessageWaiting, EVT_MQTT_MESSAGE_WAITING = wx.lib.newevent.NewEvent()
 
@@ -15,6 +21,9 @@ class Controls(wx.Frame):
         self.Bind(EVT_MQTT_MESSAGE_WAITING, self.processMqtt)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.snipsBtn = wx.Button(self, wx.ID_ANY, "Idle")
+
         self.printBtn = wx.Button(self, wx.ID_ANY, "Print Date Label")
         self.printBtn.SetFont(wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD, False))
         self.printBtn.Bind(wx.EVT_BUTTON, self.print_date)
@@ -35,6 +44,7 @@ class Controls(wx.Frame):
         self.SetBackgroundColour("black")
         self.ShowFullScreen(True)
 
+        sizer.Add(self.snipsBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
         sizer.Add(self.printBtn, 2, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 20)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -46,6 +56,8 @@ class Controls(wx.Frame):
 
         self.printer = printing.Main(False)
 
+        Notify.init("Snips")
+
         self.mqtt = paho.Client()
         self.mqtt.connect("10.0.10.11")
         self.mqtt.on_publish = Controls.on_publish
@@ -55,6 +67,7 @@ class Controls(wx.Frame):
         
         self.mqtt.subscribe("homeassistant/light/kitchen/state")
         self.mqtt.subscribe("homeassistant/light/dining_room/state")
+        self.mqtt.subscribe("hermes/dialogueManager/#")
 
         self.buttons = {
             'homeassistant/light/kitchen/state'     : self.kitchenBtn,
@@ -73,6 +86,10 @@ class Controls(wx.Frame):
     def on_publish(client, userdata, result):
         print("Published: {0}: {1}".format(userdata, result))
 
+    def send_notification(self, title, text, icon="dialog-information"):
+        #subprocess.check_call(['/usr/bin/notify-send', str(title), str(text)])
+        Notify.Notification.new(title, text).show()
+        
   
     def toggle_kitchen(self, event):
         print("Kitchen light toggle")
@@ -82,7 +99,36 @@ class Controls(wx.Frame):
         print("Dining light toggle")
         self.mqtt.publish("house/switch/dining_room", "toggle")
 
+    def snips_idle(self):
+        self.snipsBtn.SetBackgroundColour("white")
+        self.snipsBtn.SetForegroundColour("black")
+        self.snipsBtn.SetLabelText("Idle...")
+
+    def processHermes(self, event):
+        try:
+            payload = json.loads(event.payload)
+        except:
+            payload = {}
+        if event.topic == "hermes/dialogueManager/sessionStarted":
+            self.snipsBtn.SetBackgroundColour("green")
+            self.snipsBtn.SetForegroundColour("white")
+            self.snipsBtn.SetLabelText("Listening...")
+        if event.topic == "hermes/dialogueManager/sessionEnded":
+            if 'termination' in payload.keys():
+                if payload['termination']['reason'] in ('timeout', 'intentNotRecognized'):
+                    self.send_notification("Sorry, I didn't quite catch that")
+                self.snips_idle()
+
+        if event.topic == "hermes/dialogueManager/endSession":
+            if 'text' in payload.keys():
+                print(payload['text'])
+                self.send_notification(payload['text'], payload['text'])
+
     def processMqtt(self, event):
+        if event.topic.startswith("hermes"):
+            self.processHermes(event)
+            return
+
         try:
             button = self.buttons[event.topic]
         except KeyError:
@@ -108,6 +154,7 @@ class Controls(wx.Frame):
 
 
     def close(self, event):
+        Notify.uninit()
         self.MQTT_EXIT.set()
         self.thread.join()
         self.mqtt.disconnect()
