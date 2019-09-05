@@ -1,3 +1,4 @@
+import functools
 import wx
 import wx.lib.newevent
 import paho.mqtt.client as paho
@@ -13,6 +14,51 @@ from gi.repository import Notify
 
 MqttMessageWaiting, EVT_MQTT_MESSAGE_WAITING = wx.lib.newevent.NewEvent()
 
+NAMES = ("Rechner", "Barkley", "Odysseus", "Adam", "Robyn", "Spritz")
+
+class NamePanel(wx.Panel):
+    def __init__(self, *args, **kwargs):
+        wx.Panel.__init__(self, *args, **kwargs)
+        self.SetBackgroundColour("black")
+        self.buttons = []
+
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+
+        bold = wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD, False)
+
+        sizer0 = wx.BoxSizer(wx.HORIZONTAL)
+        self.closeBtn = wx.Button(self, wx.ID_ANY, "< Main Menu")
+        self.closeBtn.SetFont(bold)
+        self.closeBtn.SetBackgroundColour("red")
+
+        sizer0.Add(self.closeBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 5)
+
+        if len(NAMES) >= 1:
+            btn = wx.Button(self, wx.ID_ANY, NAMES[0])
+            sizer0.Add(btn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 5)
+            self.buttons.append(btn)
+
+        vsizer.Add(sizer0, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 5)
+
+        for n in range(1, len(NAMES), 2):
+            sizer = wx.BoxSizer(wx.HORIZONTAL)
+            btn = wx.Button(self, wx.ID_ANY, NAMES[n])
+            self.buttons.append(btn)
+            sizer.Add(btn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 5)
+            try:
+                btn = wx.Button(self, wx.ID_ANY, NAMES[n+1])
+                self.buttons.append(btn)
+                sizer.Add(btn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 5)
+            except IndexError:
+                pass
+
+            vsizer.Add(sizer, -1, wx.ALL|wx.EXPAND, 0)
+
+        self.SetSizer(vsizer)
+        self.SetSize((480, 320))
+        self.Layout()
+
+
 class Controls(wx.Frame):
     def __init__(self, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
@@ -20,22 +66,31 @@ class Controls(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.close)
         self.Bind(EVT_MQTT_MESSAGE_WAITING, self.processMqtt)
 
+        self.namePanel = NamePanel(self)
+        self.namePanel.Hide()
+        self._bindNameButtons()
+
         sizer = wx.BoxSizer(wx.VERTICAL)
+        bold = wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD, False)
 
         self.snipsBtn = wx.Button(self, wx.ID_ANY, "Idle")
 
-        self.printBtn = wx.Button(self, wx.ID_ANY, "Print Date Label")
-        self.printBtn.SetFont(wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD, False))
+        self.printBtn = wx.Button(self, wx.ID_ANY, "Date Label")
+        self.printBtn.SetFont(bold)
         self.printBtn.Bind(wx.EVT_BUTTON, self.print_date)
+        
+        self.nameBtn = wx.Button(self, wx.ID_ANY, "Name Label")
+        self.nameBtn.SetFont(bold)
+        self.nameBtn.Bind(wx.EVT_BUTTON, self.show_name_menu)
 
         self.kitchenBtn = wx.Button(self, wx.ID_ANY, "Kitchen Lights")
-        self.kitchenBtn.SetFont(wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.NORMAL, False))
+        self.kitchenBtn.SetFont(bold)
         self.kitchenBtn.Bind(wx.EVT_BUTTON, self.toggle_kitchen)
         self.kitchenBtn.SetBackgroundColour("#275DAD")
         self.kitchenBtn.SetForegroundColour("white")
 
         self.diningBtn = wx.Button(self, wx.ID_ANY, "Dining Lights")
-        self.diningBtn.SetFont(wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.NORMAL, False))
+        self.diningBtn.SetFont(bold)
         self.diningBtn.Bind(wx.EVT_BUTTON, self.toggle_dining)
         self.diningBtn.SetBackgroundColour("#C1292E")
         self.diningBtn.SetForegroundColour("white")
@@ -44,8 +99,12 @@ class Controls(wx.Frame):
         self.SetBackgroundColour("black")
         self.ShowFullScreen(True)
 
+        hsizer_top = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer_top.Add(self.printBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
+        hsizer_top.Add(self.nameBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
+
         sizer.Add(self.snipsBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
-        sizer.Add(self.printBtn, 2, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 20)
+        sizer.Add(hsizer_top, 2, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 20)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -81,6 +140,34 @@ class Controls(wx.Frame):
         #self.printer.preview()
         print(self.printer.pdf)
         wx.CallLater(4000, self.printer.cleanup, [self.printer.pdf,])
+
+    def show_name_menu(self, event):
+        self.namePanel.Show()
+
+    def hide_name_menu(self, event):
+        self.namePanel.Enable()
+        self.namePanel.Hide()
+    
+    def _bindNameButtons(self):
+        self.namePanel.closeBtn.Bind(wx.EVT_BUTTON, self.hide_name_menu)
+        for btn in self.namePanel.buttons:
+            label = btn.GetLabel()
+            func = functools.partial(self.print_name, label=label)
+            btn.Bind(wx.EVT_BUTTON, func)
+    
+    def print_name(self, event, label):
+        print(label)
+        self.printer.nametag(theme='name', name=label)
+        self.printer.printout(printer='Zebra_2824')
+        #self.printer.preview()
+        print(self.printer.pdf)
+        wx.CallLater(4000, self.printer.cleanup, [self.printer.pdf,])
+
+        self.hide_name_menu(event=None)
+        #self.namePanel.Disable()
+        #wx.CallLater(4000, self.hide_name_menu)
+
+
     
     @staticmethod
     def on_publish(client, userdata, result):
@@ -88,8 +175,16 @@ class Controls(wx.Frame):
 
     def send_notification(self, title, text, icon="dialog-information"):
         #subprocess.check_call(['/usr/bin/notify-send', str(title), str(text)])
-        Notify.Notification.new(title, text).show()
-        
+        self.notification = Notify.Notification.new(title, text)
+        self.notification.show()
+        # Since we might not be on the main thread (?)
+        wx.CallAfter(self.queue_close_notifiaction)
+
+    def queue_close_notifiaction(self, event=None):
+        wx.CallLater(20000, self.close_notification)
+
+    def close_notification(self, event=None):
+        self.notification.close() 
   
     def toggle_kitchen(self, event):
         print("Kitchen light toggle")
@@ -116,13 +211,13 @@ class Controls(wx.Frame):
         if event.topic == "hermes/dialogueManager/sessionEnded":
             if 'termination' in payload.keys():
                 if payload['termination']['reason'] in ('timeout', 'intentNotRecognized'):
-                    self.send_notification("Sorry, I didn't quite catch that")
-                self.snips_idle()
+                    self.send_notification("Snips", "Sorry, I didn't quite catch that")
+            self.snips_idle()
 
         if event.topic == "hermes/dialogueManager/endSession":
             if 'text' in payload.keys():
                 print(payload['text'])
-                self.send_notification(payload['text'], payload['text'])
+                self.send_notification("Snips", payload['text'])
 
     def processMqtt(self, event):
         if event.topic.startswith("hermes"):
