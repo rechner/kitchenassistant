@@ -14,7 +14,7 @@ from gi.repository import Notify
 
 MqttMessageWaiting, EVT_MQTT_MESSAGE_WAITING = wx.lib.newevent.NewEvent()
 
-NAMES = ("Rechner", "Barkley", "Odysseus", "Adam", "Robyn", "Spritz")
+NAMES = ("Rechner", "Barkley", "Odysseus", "Adam", "Robyn", "Spritz", "Melonball")
 
 class NamePanel(wx.Panel):
     def __init__(self, *args, **kwargs):
@@ -242,7 +242,7 @@ class Controls(wx.Frame):
             self.GetEventHandler().ProcessEvent(event)
 
         self.mqtt.on_message = on_message
-        while True:
+        while True
             self.mqtt.loop()
             if self.MQTT_EXIT.isSet():
                 return None
