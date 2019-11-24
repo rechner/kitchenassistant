@@ -74,10 +74,15 @@ class Controls(wx.Frame):
         bold = wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD, False)
 
         self.snipsBtn = wx.Button(self, wx.ID_ANY, "Idle")
+        self.snipsBtn.Bind(wx.EVT_BUTTON, self.close)
 
-        self.printBtn = wx.Button(self, wx.ID_ANY, "Date Label")
-        self.printBtn.SetFont(bold)
-        self.printBtn.Bind(wx.EVT_BUTTON, self.print_date)
+        self.dateBtn = wx.Button(self, wx.ID_ANY, "Date Label")
+        self.dateBtn.SetFont(bold)
+        self.dateBtn.Bind(wx.EVT_BUTTON, self.print_date)
+
+        self.outsideBtn = wx.Button(self, wx.ID_ANY, "Outside Label")
+        self.outsideBtn.SetFont(bold)
+        self.outsideBtn.Bind(wx.EVT_BUTTON, self.print_outside)
         
         self.nameBtn = wx.Button(self, wx.ID_ANY, "Name Label")
         self.nameBtn.SetFont(bold)
@@ -99,16 +104,20 @@ class Controls(wx.Frame):
         self.SetBackgroundColour("black")
         self.ShowFullScreen(True)
 
+        vsizer_left = wx.BoxSizer(wx.VERTICAL)
+        vsizer_left.Add(self.dateBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
+        vsizer_left.Add(self.outsideBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
+
         hsizer_top = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer_top.Add(self.printBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
+        hsizer_top.Add(vsizer_left, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
         hsizer_top.Add(self.nameBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
 
         sizer.Add(self.snipsBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
-        sizer.Add(hsizer_top, 2, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 20)
+        sizer.Add(hsizer_top, 2, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 10)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        sizer.Add(hsizer, 1, wx.ALL|wx.EXPAND, 20)
+        sizer.Add(hsizer, 1, wx.ALL|wx.EXPAND, 10)
         hsizer.Add(self.kitchenBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
         hsizer.Add(self.diningBtn, -1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTRE, 0)
         self.SetSizer(sizer)
@@ -167,6 +176,10 @@ class Controls(wx.Frame):
         #self.namePanel.Disable()
         #wx.CallLater(4000, self.hide_name_menu)
 
+    def print_outside(self, event):
+        self.printer.nametag(theme='outside')
+        self.printer.printout(printer='Zebra_2824')
+        wx.CallLater(4000, self.printer.cleanup, [self.printer.pdf,]) 
 
     
     @staticmethod
@@ -174,11 +187,12 @@ class Controls(wx.Frame):
         print("Published: {0}: {1}".format(userdata, result))
 
     def send_notification(self, title, text, icon="dialog-information"):
+        pass
         #subprocess.check_call(['/usr/bin/notify-send', str(title), str(text)])
-        self.notification = Notify.Notification.new(title, text)
-        self.notification.show()
+        #self.notification = Notify.Notification.new(title, text)
+        #self.notification.show()
         # Since we might not be on the main thread (?)
-        wx.CallAfter(self.queue_close_notifiaction)
+        #wx.CallAfter(self.queue_close_notifiaction)
 
     def queue_close_notifiaction(self, event=None):
         wx.CallLater(20000, self.close_notification)
@@ -242,7 +256,7 @@ class Controls(wx.Frame):
             self.GetEventHandler().ProcessEvent(event)
 
         self.mqtt.on_message = on_message
-        while True
+        while True:
             self.mqtt.loop()
             if self.MQTT_EXIT.isSet():
                 return None
