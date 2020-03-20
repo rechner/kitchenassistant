@@ -55,7 +55,7 @@ class NamePanel(wx.Panel):
             vsizer.Add(sizer, -1, wx.ALL|wx.EXPAND, 0)
 
         self.SetSizer(vsizer)
-        self.SetSize((480, 320))
+        self.SetSize((800, 480))
         self.Layout()
 
 
