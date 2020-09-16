@@ -32,7 +32,7 @@ PRINT_MODE = 'pdf'
 
 # Platforms using the CUPS printing system (UNIX):
 unix = ['Linux', 'linux2', 'Darwin']
-wkhtmltopdf = '/usr/bin/wkhtmltopdf' #path to wkhtmltopdf binary
+wkhtmltopdf = '/usr/local/bin/wkhtmltopdf' #path to wkhtmltopdf binary
 #TODO: Option to select native or builtin wkhtmltopdf
 
 #TODO: Determine whether to use ~/.taxidi/resources/ (config.ini in ~/.taxidi/)
@@ -303,9 +303,6 @@ class Nametag:
         return config
 
     def nametag(self, template='apis', name='', number='', title='', level='', age='', barcode=False):
-    #def nametag(self, template='default', room='', first='', last='', medical='',
-    #            code='', secure='', barcode=True):
-
         #Check that theme specified is valid:
         if template != 'default':
             themes = self.listTemplates()
@@ -346,7 +343,7 @@ class Nametag:
                 html = html.replace(u'default-secure.png', u'white.gif')
         else:
             #replace barcode image with white.gif
-            html = html.decode('utf-8').replace(u'default-secure.png', u'white.gif')
+            html = html.replace(u'default-secure.png', u'white.gif')
             self.log.debug("Disabled barcode.")
 
         #get the current date/time
@@ -357,7 +354,7 @@ class Nametag:
         html = self.date_re.sub(now.strftime("%a<br>%Y-%m-%d"), html)
         html = self.time_re.sub(now.strftime("%H:%M:%S"), html)
         #Fix for if database returns None instead of empty string:
-        html = self.name_re.sub(name.encode('utf-8'), html.encode('utf-8'))
+        html = self.name_re.sub(name, html)
         html = self.level_re.sub(str(level), html)
         html = self.title_re.sub(str(title), html)
         html = self.number_re.sub(str(number), html)
@@ -513,11 +510,14 @@ class Main:
         self.con.printout(filename, printer, orientation)
 
     def cleanup(self, trash=None, *dt):
-        if trash != None:
-            for item in trash:
-                os.unlink(item)
-        else:
-            os.unlink(self.pdf)
+        try:
+            if trash != None:
+                for item in trash:
+                    os.unlink(item)
+            else:
+                os.unlink(self.pdf)
+        except:
+            pass
         self.section = ''
 
 if __name__ == '__main__':
