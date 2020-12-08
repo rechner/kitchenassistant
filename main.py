@@ -258,7 +258,7 @@ class ControlsPanel(wx.Panel):
     def hide_music_menu(self, event):
         uri = event.GetURL()
         print(uri)
-        if uri not in (NOW_PLAYING_URI,):
+        if uri == "about:blank":
             try:
                 event.Veto()
             except:
