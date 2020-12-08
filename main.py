@@ -1,6 +1,7 @@
 import functools
 import datetime
 import wx
+import wx.html2
 import wx.lib.newevent
 import paho.mqtt.client as paho
 import threading
@@ -22,6 +23,36 @@ SCREEN_SIZE = (800, 480)
 
 LABEL_CACHE = {}
 
+NOW_PLAYING_URI = "http://docker1.lan.knot.space:6680/iris/kiosk-mode"
+
+
+class BrowserPanel(wx.Panel):
+    def __init__(self, *args, **kwds):
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        self.browser = wx.html2.WebView.New(self)
+        sizer.Add(self.browser, 1, wx.EXPAND, 10)
+        self.SetSizer(sizer)
+        self.SetSize(SCREEN_SIZE)
+
+
+class MusicPanel(wx.Panel):
+    def __init__(self, *args, **kwargs):
+        wx.Panel.__init__(self, *args, **kwargs)
+        self.SetBackgroundColour("black")
+        self.buttons = []
+
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.browser = wx.html2.WebView.New(self)
+        vsizer.Add(self.browser, 1, wx.EXPAND, 0)
+
+        #self.browser.LoadURL(NOW_PLAYING_URI)
+
+        self.SetSizer(vsizer)
+        self.SetSize(SCREEN_SIZE)
+        self.Layout()
+
+
 
 class NamePanel(wx.Panel):
     def __init__(self, *args, **kwargs):
@@ -38,31 +69,31 @@ class NamePanel(wx.Panel):
         self.closeBtn.SetFont(bold)
         self.closeBtn.SetBackgroundColour("red")
 
-        sizer0.Add(self.closeBtn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 5)
+        sizer0.Add(self.closeBtn, -1, wx.ALL | wx.EXPAND, 5)
 
         if len(NAMES) >= 1:
             btn = wx.Button(self, wx.ID_ANY, NAMES[0])
-            sizer0.Add(btn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 5)
+            sizer0.Add(btn, -1, wx.ALL | wx.EXPAND, 5)
             self.buttons.append(btn)
 
-        vsizer.Add(sizer0, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 5)
+        vsizer.Add(sizer0, -1, wx.ALL | wx.EXPAND, 5)
 
         for n in range(1, len(NAMES), 2):
             sizer = wx.BoxSizer(wx.HORIZONTAL)
             btn = wx.Button(self, wx.ID_ANY, NAMES[n])
             self.buttons.append(btn)
-            sizer.Add(btn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 5)
+            sizer.Add(btn, -1, wx.ALL | wx.EXPAND, 5)
             try:
                 btn = wx.Button(self, wx.ID_ANY, NAMES[n + 1])
                 self.buttons.append(btn)
-                sizer.Add(btn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 5)
+                sizer.Add(btn, -1, wx.ALL | wx.EXPAND, 5)
             except IndexError:
                 pass
 
             vsizer.Add(sizer, -1, wx.ALL | wx.EXPAND, 0)
 
         self.SetSizer(vsizer)
-        self.SetSize((800, 480))
+        self.SetSize(SCREEN_SIZE)
         self.Layout()
 
 
@@ -77,6 +108,7 @@ class Frame(wx.Frame):
 class ControlsPanel(wx.Panel):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
+
 
         self.Bind(wx.EVT_CLOSE, self.close)
         self.Bind(EVT_MQTT_MESSAGE_WAITING, self.processMqtt)
@@ -99,6 +131,13 @@ class ControlsPanel(wx.Panel):
         self.nameBtn.SetFont(bold)
         self.nameBtn.Bind(wx.EVT_BUTTON, self.show_name_menu)
 
+        music_icon = wx.Bitmap("resources/images/emblem-music-symbolic.symbolic.png")
+
+        self.soundBtn = wx.Button(self, wx.ID_ANY, "Music")
+        self.soundBtn.SetFont(bold)
+        self.soundBtn.SetBitmap(music_icon)
+        self.soundBtn.Bind(wx.EVT_BUTTON, self.show_music_menu)
+
         self.kitchenBtn = wx.Button(self, wx.ID_ANY, "Kitchen Lights")
         self.kitchenBtn.SetFont(bold)
         self.kitchenBtn.Bind(wx.EVT_BUTTON, self.toggle_kitchen)
@@ -114,26 +153,35 @@ class ControlsPanel(wx.Panel):
         self.SetBackgroundColour("black")
 
         vsizer_left = wx.BoxSizer(wx.VERTICAL)
-        vsizer_left.Add(self.dateBtn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 0)
-        vsizer_left.Add(self.outsideBtn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 0)
+        vsizer_left.Add(self.dateBtn, -1, wx.ALL | wx.EXPAND, 0)
+        vsizer_left.Add(self.outsideBtn, -1, wx.ALL | wx.EXPAND, 0)
+
+        vsizer_right = wx.BoxSizer(wx.VERTICAL)
+        vsizer_right.Add(self.nameBtn, -1, wx.ALL | wx.EXPAND, 0)
+        vsizer_right.Add(self.soundBtn, -1, wx.ALL | wx.EXPAND, 0)
 
         hsizer_top = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer_top.Add(vsizer_left, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 0)
-        hsizer_top.Add(self.nameBtn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 0)
+        hsizer_top.Add(vsizer_left, -1, wx.ALL | wx.EXPAND, 0)
+        hsizer_top.Add(vsizer_right, -1, wx.ALL | wx.EXPAND, 0)
 
-        sizer.Add(self.snipsBtn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 0)
-        sizer.Add(hsizer_top, 2, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 10)
+        sizer.Add(self.snipsBtn, -1, wx.ALL | wx.EXPAND, 0)
+        sizer.Add(hsizer_top, 2, wx.ALL | wx.EXPAND, 10)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
 
         sizer.Add(hsizer, 1, wx.ALL | wx.EXPAND, 10)
-        hsizer.Add(self.kitchenBtn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 0)
-        hsizer.Add(self.diningBtn, -1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 0)
+        hsizer.Add(self.kitchenBtn, -1, wx.ALL | wx.EXPAND, 0)
+        hsizer.Add(self.diningBtn, -1, wx.ALL | wx.EXPAND, 0)
         self.SetSizer(sizer)
 
         self.namePanel = NamePanel(self)
         self.namePanel.Hide()
         self._bindNameButtons()
+
+        self.musicPanel = MusicPanel(self)
+        self.musicPanel.Hide()
+        self._bindMusicButtons()
+        self.musicPanel.browser.LoadURL(NOW_PLAYING_URI)
 
         self.printer = printing.Main(False)
 
@@ -202,6 +250,24 @@ class ControlsPanel(wx.Panel):
             label = btn.GetLabel()
             func = functools.partial(self.print_name, label=label)
             btn.Bind(wx.EVT_BUTTON, func)
+
+    def show_music_menu(self, event):
+        self.musicPanel.Show()
+        #self.musicPanel.browser.LoadURL(NOW_PLAYING_URI)
+
+    def hide_music_menu(self, event):
+        uri = event.GetURL()
+        print(uri)
+        if uri not in (NOW_PLAYING_URI,):
+            try:
+                event.Veto()
+            except:
+                pass
+        self.musicPanel.Hide()
+
+    def _bindMusicButtons(self):
+        self.musicPanel.browser.Bind(wx.html2.EVT_WEBVIEW_NAVIGATING,
+        self.hide_music_menu)
 
     def print_name(self, event, label):
         self.print_using_cache("name", name=label)
