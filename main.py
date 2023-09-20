@@ -16,43 +16,12 @@ from gi.repository import Notify  # noqa: E402
 MqttMessageWaiting, EVT_MQTT_MESSAGE_WAITING = wx.lib.newevent.NewEvent()
 
 DEBUG = True
-NAMES = ("Rechner", "Barkley", "Odysseus", "Vikar")
+NAMES = ("Rechner", "Kilte", "Dulse", "Barkley", "Oreo", "Hyena", "Fox", "Dog")
 MQTT_ENABLE = False
 LABEL_PRINTER = "Zebra_2824"
 SCREEN_SIZE = (800, 480)
 
 LABEL_CACHE = {}
-
-NOW_PLAYING_URI = "http://docker1.lan.knot.space:6680/iris/kiosk-mode"
-
-
-class BrowserPanel(wx.Panel):
-    def __init__(self, *args, **kwds):
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        self.browser = wx.html2.WebView.New(self)
-        sizer.Add(self.browser, 1, wx.EXPAND, 10)
-        self.SetSizer(sizer)
-        self.SetSize(SCREEN_SIZE)
-
-
-class MusicPanel(wx.Panel):
-    def __init__(self, *args, **kwargs):
-        wx.Panel.__init__(self, *args, **kwargs)
-        self.SetBackgroundColour("black")
-        self.buttons = []
-
-        vsizer = wx.BoxSizer(wx.VERTICAL)
-
-        self.browser = wx.html2.WebView.New(self)
-        vsizer.Add(self.browser, 1, wx.EXPAND, 0)
-
-        #self.browser.LoadURL(NOW_PLAYING_URI)
-
-        self.SetSizer(vsizer)
-        self.SetSize(SCREEN_SIZE)
-        self.Layout()
-
-
 
 class NamePanel(wx.Panel):
     def __init__(self, *args, **kwargs):
@@ -131,13 +100,6 @@ class ControlsPanel(wx.Panel):
         self.nameBtn.SetFont(bold)
         self.nameBtn.Bind(wx.EVT_BUTTON, self.show_name_menu)
 
-        music_icon = wx.Bitmap("resources/images/emblem-music-symbolic.symbolic.png")
-
-        self.soundBtn = wx.Button(self, wx.ID_ANY, "Music")
-        self.soundBtn.SetFont(bold)
-        self.soundBtn.SetBitmap(music_icon)
-        self.soundBtn.Bind(wx.EVT_BUTTON, self.show_music_menu)
-
         self.kitchenBtn = wx.Button(self, wx.ID_ANY, "Kitchen Lights")
         self.kitchenBtn.SetFont(bold)
         self.kitchenBtn.Bind(wx.EVT_BUTTON, self.toggle_kitchen)
@@ -177,11 +139,6 @@ class ControlsPanel(wx.Panel):
         self.namePanel = NamePanel(self)
         self.namePanel.Hide()
         self._bindNameButtons()
-
-        self.musicPanel = MusicPanel(self)
-        self.musicPanel.Hide()
-        self._bindMusicButtons()
-        self.musicPanel.browser.LoadURL(NOW_PLAYING_URI)
 
         self.printer = printing.Main(False)
 
@@ -251,23 +208,6 @@ class ControlsPanel(wx.Panel):
             func = functools.partial(self.print_name, label=label)
             btn.Bind(wx.EVT_BUTTON, func)
 
-    def show_music_menu(self, event):
-        self.musicPanel.Show()
-        #self.musicPanel.browser.LoadURL(NOW_PLAYING_URI)
-
-    def hide_music_menu(self, event):
-        uri = event.GetURL()
-        print(uri)
-        if uri == "about:blank":
-            try:
-                event.Veto()
-            except:
-                pass
-        self.musicPanel.Hide()
-
-    def _bindMusicButtons(self):
-        self.musicPanel.browser.Bind(wx.html2.EVT_WEBVIEW_NAVIGATING,
-        self.hide_music_menu)
 
     def print_name(self, event, label):
         self.print_using_cache("name", name=label)
