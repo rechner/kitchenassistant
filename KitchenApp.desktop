@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Comment=Kitchen Helper
+Name=KitchenApp
+Exec=python3 /home/pi/workspace/kitchen/main.py
+Icon=obconf.xpm
+Terminal=false
+Categories=Utility
+StartupNotify=true

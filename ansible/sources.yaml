@@ -1,0 +1,37 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Enable Bullseye backports repo
+  become: true
+  hosts: all
+  tasks:
+    - name: Import GPG key  # noqa: no-changed-when
+      ansible.builtin.command: |
+        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E98404D386FA1D9
+    - name: Import GPG key  # noqa: no-changed-when
+      ansible.builtin.command: |
+        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6ED0E7B82643E131
+
+    - name: Install backports repo
+      ansible.builtin.apt_repository:
+        repo: deb http://deb.debian.org/debian bullseye-backports main contrib non-free
+        state: present
+
+    - name: Enable Bullseye backports repo
+      ansible.builtin.apt_repository:
+        repo: deb-src http://deb.debian.org/debian bullseye-backports main contrib non-free
+        state: present
+
+    - name: Install freeipa-client package
+      ansible.builtin.apt:
+        name: freeipa-client
+        state: present
+
+    - name: Install sudo package
+      ansible.builtin.apt:
+        name: sudo
+        state: present
+
+    - name: Install vim
+      ansible.builtin.apt:
+        name: vim
+        state: present

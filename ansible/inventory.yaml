@@ -1,0 +1,8 @@
+raspi:
+  hosts:
+    kitchenpi:
+      ansible_host: kitchenpi.iot.knot.space
+
+  vars:
+    ansible_user: pi
+

@@ -1,0 +1,9 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure CUPS
+  become: true
+  hosts: all
+  tasks:
+    - name: Enable remote access and printer sharing  # noqa: no-changed-when
+      ansible.builtin.command: |
+        cupsctl --remote-admin --remote-any --share-printers
